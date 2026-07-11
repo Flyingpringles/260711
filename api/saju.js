@@ -43,24 +43,10 @@ function sanitizeNumbers(rawNumbers, rawBonus) {
   return { numbers, bonus };
 }
 
-module.exports = async function handler(req, res) {
-  if (req.method !== 'POST') {
-    res.status(405).json({ error: 'Method Not Allowed' });
-    return;
-  }
-
-  const { birthDate, birthTime } = req.body || {};
-
-  if (!birthDate || typeof birthDate !== 'string') {
-    res.status(400).json({ error: 'birthDate is required' });
-    return;
-  }
-
+async function getSajuResult(birthDate, birthTime) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
-    const fallback = buildFallback('서버에 API 키가 설정되지 않아 무작위로 번호를 뽑았습니다.');
-    res.status(200).json(fallback);
-    return;
+    return buildFallback('서버에 API 키가 설정되지 않아 무작위로 번호를 뽑았습니다.');
   }
 
   const userMessage = birthTime
@@ -85,28 +71,21 @@ module.exports = async function handler(req, res) {
     });
 
     if (!response.ok) {
-      const fallback = buildFallback('사주 분석 서비스에 일시적으로 연결할 수 없어 무작위로 번호를 뽑았습니다.');
-      res.status(200).json(fallback);
-      return;
+      return buildFallback('사주 분석 서비스에 일시적으로 연결할 수 없어 무작위로 번호를 뽑았습니다.');
     }
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || '';
     const jsonMatch = content.match(/\{[\s\S]*\}/);
-
     if (!jsonMatch) {
-      const fallback = buildFallback('사주 분석 결과를 해석하지 못해 무작위로 번호를 뽑았습니다.');
-      res.status(200).json(fallback);
-      return;
+      return buildFallback('사주 분석 결과를 해석하지 못해 무작위로 번호를 뽑았습니다.');
     }
 
     let parsed;
     try {
       parsed = JSON.parse(jsonMatch[0]);
     } catch {
-      const fallback = buildFallback('사주 분석 결과를 해석하지 못해 무작위로 번호를 뽑았습니다.');
-      res.status(200).json(fallback);
-      return;
+      return buildFallback('사주 분석 결과를 해석하지 못해 무작위로 번호를 뽑았습니다.');
     }
 
     const { numbers, bonus } = sanitizeNumbers(parsed.numbers, parsed.bonus);
@@ -114,9 +93,70 @@ module.exports = async function handler(req, res) {
       ? parsed.analysis.trim()
       : '사주 분석 결과를 바탕으로 번호를 추천했습니다.';
 
-    res.status(200).json({ analysis, numbers, bonus });
+    return { analysis, numbers, bonus };
   } catch {
-    const fallback = buildFallback('사주 분석 중 오류가 발생해 무작위로 번호를 뽑았습니다.');
-    res.status(200).json(fallback);
+    return buildFallback('사주 분석 중 오류가 발생해 무작위로 번호를 뽑았습니다.');
   }
+}
+
+function sanitizeGender(rawGender) {
+  return rawGender === 'male' || rawGender === 'female' ? rawGender : null;
+}
+
+async function saveToSupabase({ birthDate, birthTime, gender, analysis, numbers, bonus }) {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return;
+
+  try {
+    await fetch(`${url}/rest/v1/saju_draws`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+        Prefer: 'return=minimal'
+      },
+      body: JSON.stringify([{
+        birth_date: birthDate,
+        birth_time: birthTime,
+        gender,
+        analysis,
+        numbers,
+        bonus
+      }])
+    });
+  } catch {
+    // Best-effort logging; a failed save should never block the user's result.
+  }
+}
+
+module.exports = async function handler(req, res) {
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Method Not Allowed' });
+    return;
+  }
+
+  const { birthDate, birthTime, gender } = req.body || {};
+
+  if (!birthDate || typeof birthDate !== 'string') {
+    res.status(400).json({ error: 'birthDate is required' });
+    return;
+  }
+
+  const cleanBirthTime = typeof birthTime === 'string' && birthTime ? birthTime : null;
+  const cleanGender = sanitizeGender(gender);
+
+  const result = await getSajuResult(birthDate, cleanBirthTime);
+
+  await saveToSupabase({
+    birthDate,
+    birthTime: cleanBirthTime,
+    gender: cleanGender,
+    analysis: result.analysis,
+    numbers: result.numbers,
+    bonus: result.bonus
+  });
+
+  res.status(200).json(result);
 };

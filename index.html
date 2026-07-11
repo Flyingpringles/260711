@@ -446,7 +446,8 @@
     color: var(--ink-muted-48);
   }
 
-  .field input {
+  .field input,
+  .field select {
     font-family: inherit;
     font-size: 17px;
     letter-spacing: -0.374px;
@@ -459,7 +460,8 @@
     width: 100%;
   }
 
-  .field input:focus-visible {
+  .field input:focus-visible,
+  .field select:focus-visible {
     outline: 2px solid var(--primary-focus);
     outline-offset: 1px;
   }
@@ -467,6 +469,14 @@
   .field input:disabled {
     color: var(--ink-muted-48);
     background: var(--canvas-parchment);
+  }
+
+  .privacy-note {
+    font-size: 12px;
+    line-height: 1.4;
+    letter-spacing: -0.12px;
+    color: var(--ink-muted-48);
+    margin: 0 0 var(--sp-lg);
   }
 
   .checkbox-field {
@@ -603,8 +613,17 @@
         <input type="checkbox" id="noTime">
         <span>태어난 시간을 모릅니다</span>
       </label>
+      <div class="field">
+        <label for="gender">성별</label>
+        <select id="gender">
+          <option value="">선택 안 함</option>
+          <option value="male">남성</option>
+          <option value="female">여성</option>
+        </select>
+      </div>
       <button type="submit" class="btn-primary saju-submit" id="sajuBtn">사주로 번호 추천받기</button>
     </form>
+    <p class="privacy-note">입력한 생년월일, 시간, 성별과 사주 분석·추천 번호는 서비스 개선을 위해 저장됩니다.</p>
 
     <div class="saju-result" id="sajuResult" hidden>
       <div class="chat-bubble" id="sajuAnalysis"></div>
@@ -638,6 +657,7 @@
   const birthDateInput = document.getElementById('birthDate');
   const birthTimeInput = document.getElementById('birthTime');
   const noTimeCheckbox = document.getElementById('noTime');
+  const genderSelect = document.getElementById('gender');
   const sajuBtn = document.getElementById('sajuBtn');
   const sajuResult = document.getElementById('sajuResult');
   const sajuAnalysis = document.getElementById('sajuAnalysis');
@@ -821,6 +841,7 @@
     const birthDate = birthDateInput.value;
     if (!birthDate) return;
     const birthTime = noTimeCheckbox.checked ? null : (birthTimeInput.value || null);
+    const gender = genderSelect.value || null;
 
     isSajuLoading = true;
     sajuBtn.disabled = true;
@@ -834,7 +855,7 @@
       const res = await fetch('/api/saju', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ birthDate, birthTime })
+        body: JSON.stringify({ birthDate, birthTime, gender })
       });
       if (!res.ok) throw new Error('request failed');
       const data = await res.json();
