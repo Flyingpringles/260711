@@ -385,6 +385,130 @@
     outline-offset: 2px;
   }
 
+  .saju-section {
+    background: var(--canvas);
+    display: flex;
+    justify-content: center;
+  }
+
+  .saju-section .card { text-align: left; }
+  .saju-section .eyebrow { text-align: center; }
+
+  h2.section-title {
+    margin: 0 auto 12px;
+    max-width: 18ch;
+    text-align: center;
+    font-size: 34px;
+    font-weight: 600;
+    line-height: 1.1;
+    letter-spacing: -0.374px;
+    text-wrap: balance;
+  }
+
+  .saju-lead {
+    margin: 0 auto var(--sp-xl);
+    max-width: 42ch;
+    text-align: center;
+    font-size: 17px;
+    line-height: 1.47;
+    letter-spacing: -0.374px;
+    color: var(--ink-muted-80);
+  }
+
+  .saju-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-sm);
+    align-items: flex-end;
+    margin-bottom: var(--sp-lg);
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1 1 180px;
+  }
+
+  .field label {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: -0.12px;
+    color: var(--ink-muted-48);
+  }
+
+  .field input {
+    font-family: inherit;
+    font-size: 17px;
+    letter-spacing: -0.374px;
+    color: var(--ink);
+    background: var(--canvas);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: var(--radius-pill);
+    padding: 11px 18px;
+    height: 44px;
+    width: 100%;
+  }
+
+  .field input:focus-visible {
+    outline: 2px solid var(--primary-focus);
+    outline-offset: 1px;
+  }
+
+  .field input:disabled {
+    color: var(--ink-muted-48);
+    background: var(--canvas-parchment);
+  }
+
+  .checkbox-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    letter-spacing: -0.224px;
+    color: var(--ink-muted-80);
+    flex: 1 1 100%;
+    margin-bottom: var(--sp-md);
+    cursor: pointer;
+  }
+
+  .checkbox-field input {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--primary);
+  }
+
+  .saju-submit {
+    width: 100%;
+  }
+
+  .saju-result {
+    margin-top: var(--sp-xl);
+  }
+
+  .chat-bubble {
+    background: var(--surface-pearl);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius-lg);
+    padding: var(--sp-lg);
+    margin-bottom: var(--sp-lg);
+    font-size: 17px;
+    line-height: 1.47;
+    letter-spacing: -0.374px;
+    color: var(--ink);
+    white-space: pre-line;
+  }
+
+  .mini-dark {
+    background: var(--surface-tile-1);
+    color: var(--body-on-dark);
+    border-radius: var(--radius-lg);
+    padding: 28px 20px;
+  }
+
+  .mini-dark .balls { margin-bottom: 0; }
+  .mini-dark .status-line { text-align: center; }
+
   footer {
     background: var(--canvas-parchment);
     text-align: center;
@@ -451,14 +575,47 @@
   </div>
 </section>
 
+<section class="saju-section">
+  <div class="card">
+    <p class="eyebrow">Saju Draw</p>
+    <h2 class="section-title">사주로 번호 추천받기</h2>
+    <p class="saju-lead">생년월일과 태어난 시간을 입력하면, AI가 사주를 해석하고 그 기운에 맞는 번호를 추천해드려요.</p>
+
+    <form class="saju-form" id="sajuForm">
+      <div class="field">
+        <label for="birthDate">생년월일</label>
+        <input type="date" id="birthDate" required>
+      </div>
+      <div class="field">
+        <label for="birthTime">태어난 시간</label>
+        <input type="time" id="birthTime">
+      </div>
+      <label class="checkbox-field">
+        <input type="checkbox" id="noTime">
+        <span>태어난 시간을 모릅니다</span>
+      </label>
+      <button type="submit" class="btn-primary saju-submit" id="sajuBtn">사주로 번호 추천받기</button>
+    </form>
+
+    <div class="saju-result" id="sajuResult" hidden>
+      <div class="chat-bubble" id="sajuAnalysis"></div>
+      <div class="mini-dark">
+        <p class="status-line" id="sajuStatusLine">&nbsp;</p>
+        <div class="balls" id="sajuBalls"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <footer>
-  실제 로또 추첨 결과와 무관한 참고용 도구입니다. 당첨을 보장하지 않습니다.
+  실제 로또 추첨 결과와 무관한 참고용 도구입니다. AI 기반 사주 해석은 오락 목적으로만 제공되며 당첨을 보장하지 않습니다.
 </footer>
 
 <script>
   const MAX_GAMES = 5;
   const games = [];
   let isDrawing = false;
+  let isSajuLoading = false;
 
   const ballsEl = document.getElementById('balls');
   const drawBtn = document.getElementById('drawBtn');
@@ -467,6 +624,18 @@
   const gameCount = document.getElementById('gameCount');
   const historyList = document.getElementById('historyList');
   const statusLine = document.getElementById('statusLine');
+
+  const sajuForm = document.getElementById('sajuForm');
+  const birthDateInput = document.getElementById('birthDate');
+  const birthTimeInput = document.getElementById('birthTime');
+  const noTimeCheckbox = document.getElementById('noTime');
+  const sajuBtn = document.getElementById('sajuBtn');
+  const sajuResult = document.getElementById('sajuResult');
+  const sajuAnalysis = document.getElementById('sajuAnalysis');
+  const sajuStatusLine = document.getElementById('sajuStatusLine');
+  const sajuBalls = document.getElementById('sajuBalls');
+
+  birthDateInput.max = new Date().toISOString().slice(0, 10);
 
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -493,20 +662,20 @@
     return { main: picked.sort((a, b) => a - b), bonus };
   }
 
-  function buildSlots() {
-    ballsEl.innerHTML = '';
+  function buildSlots(container) {
+    container.innerHTML = '';
     const mainBalls = [];
     for (let i = 0; i < 6; i++) {
       const div = document.createElement('div');
       div.className = 'ball placeholder';
       div.textContent = '?';
-      ballsEl.appendChild(div);
+      container.appendChild(div);
       mainBalls.push(div);
     }
     const divider = document.createElement('div');
     divider.className = 'divider';
     divider.textContent = '+';
-    ballsEl.appendChild(divider);
+    container.appendChild(divider);
 
     const slot = document.createElement('div');
     slot.className = 'ball-slot';
@@ -518,7 +687,7 @@
     bonusBall.textContent = '?';
     slot.appendChild(label);
     slot.appendChild(bonusBall);
-    ballsEl.appendChild(slot);
+    container.appendChild(slot);
 
     return { mainBalls, bonusBall, label };
   }
@@ -541,6 +710,24 @@
     ballEl.textContent = finalNumber;
     ballEl.className = `ball ${colorClass(finalNumber)} settle`;
     if (isBonus) ballEl.classList.add('bonus');
+  }
+
+  async function revealNumbers(container, statusEl, main, bonus) {
+    const { mainBalls, bonusBall, label } = buildSlots(container);
+    label.classList.remove('visible');
+    statusEl.textContent = '번호를 추첨하고 있습니다...';
+
+    for (let i = 0; i < mainBalls.length; i++) {
+      spinAndSettle(mainBalls[i], main[i], false);
+      await sleep(reduceMotion ? 0 : 260);
+    }
+    await sleep(reduceMotion ? 0 : 550);
+
+    statusEl.textContent = '보너스 번호를 추첨하고 있습니다...';
+    label.classList.add('visible');
+    await spinAndSettle(bonusBall, bonus, true);
+
+    statusEl.textContent = '추첨이 완료되었습니다.';
   }
 
   function renderHistory() {
@@ -596,22 +783,7 @@
     updateHeader();
 
     const { main, bonus } = drawSeven();
-    const { mainBalls, bonusBall, label } = buildSlots();
-    label.classList.remove('visible');
-
-    statusLine.textContent = '번호를 추첨하고 있습니다...';
-
-    for (let i = 0; i < mainBalls.length; i++) {
-      spinAndSettle(mainBalls[i], main[i], false);
-      await sleep(reduceMotion ? 0 : 260);
-    }
-    await sleep(reduceMotion ? 0 : 550);
-
-    statusLine.textContent = '보너스 번호를 추첨하고 있습니다...';
-    label.classList.add('visible');
-    await spinAndSettle(bonusBall, bonus, true);
-
-    statusLine.textContent = '추첨이 완료되었습니다.';
+    await revealNumbers(ballsEl, statusLine, main, bonus);
 
     const result = { main, bonus };
     if (isNewGame || games.length === 0) {
@@ -627,4 +799,45 @@
 
   drawBtn.addEventListener('click', () => draw(false));
   addBtn.addEventListener('click', () => draw(true));
+
+  noTimeCheckbox.addEventListener('change', () => {
+    birthTimeInput.disabled = noTimeCheckbox.checked;
+    if (noTimeCheckbox.checked) birthTimeInput.value = '';
+  });
+
+  sajuForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (isSajuLoading) return;
+
+    const birthDate = birthDateInput.value;
+    if (!birthDate) return;
+    const birthTime = noTimeCheckbox.checked ? null : (birthTimeInput.value || null);
+
+    isSajuLoading = true;
+    sajuBtn.disabled = true;
+    sajuBtn.textContent = '분석 중...';
+    sajuResult.hidden = false;
+    sajuAnalysis.textContent = '사주를 분석하고 있습니다...';
+    sajuBalls.innerHTML = '';
+    sajuStatusLine.innerHTML = '&nbsp;';
+
+    try {
+      const res = await fetch('/api/saju', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ birthDate, birthTime })
+      });
+      if (!res.ok) throw new Error('request failed');
+      const data = await res.json();
+      sajuAnalysis.textContent = data.analysis;
+      await revealNumbers(sajuBalls, sajuStatusLine, data.numbers, data.bonus);
+    } catch (err) {
+      sajuAnalysis.textContent = '분석에 실패했습니다. 잠시 후 다시 시도해주세요.';
+      sajuStatusLine.innerHTML = '&nbsp;';
+    } finally {
+      isSajuLoading = false;
+      sajuBtn.disabled = false;
+      sajuBtn.textContent = '사주로 번호 추천받기';
+    }
+  });
 </script>
